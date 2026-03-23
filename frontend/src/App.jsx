@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import axios from 'axios'
 import InterviewRoom from './components/InterviewRoom'
+import LandingPage from './components/LandingPage' // Ensure this file exists in components/
 import './App.css'
 
 export default function App() {
+  // NEW: State to toggle between Landing Page and Interview App
+  const [showInterview, setShowInterview] = useState(false)
+  
   const [question, setQuestion] = useState('')
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
@@ -22,12 +26,11 @@ export default function App() {
     formData.append('resume', file)
 
     try {
-      // 👇 THE FIX: Point directly to the Django server on port 8000
+      // Point directly to the Django server on port 8000
       const { data } = await axios.post('http://127.0.0.1:8000/api/generate-question/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       
-      // Send the generated question down to the InterviewRoom
       setQuestion(data.question)
       
     } catch (err) {
@@ -36,15 +39,26 @@ export default function App() {
       console.error("Upload Error:", err)
     } finally {
       setUploading(false)
-      // Reset the file input so you can upload the same file again if needed
       e.target.value = null
     }
   }
 
+  // --- LOGIC: RENDER LANDING PAGE IF NOT STARTED ---
+  if (!showInterview) {
+    return <LandingPage onStart={() => setShowInterview(true)} />;
+  }
+
+  // --- LOGIC: RENDER INTERVIEW APP AFTER "START" IS CLICKED ---
   return (
     <div className="app">
       <header className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px' }}>
-        <h1 style={{ margin: 0, color: '#00ffff' }}>InterviewHawk</h1>
+        {/* Clicking the logo takes you back to the landing page */}
+        <h1 
+          onClick={() => setShowInterview(false)} 
+          style={{ margin: 0, color: '#00ffff', cursor: 'pointer' }}
+        >
+          InterviewHawk
+        </h1>
         
         <label 
           className="upload-btn" 
