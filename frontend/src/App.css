@@ -127,3 +127,44 @@
 .emotion.happy {
   color: #4ade80;
 }
+
+.transcript-box-wrap {
+  margin-top: 1.25rem;
+}
+
+.transcript-label {
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.transcript-box {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1rem;
+  min-height: 110px;
+  color: #ccc;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.transcript-placeholder {
+  color: #666;
+}
+
+.recording-controls button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.recording-controls .listening-start:disabled {
+  border-color: #22c55e;
+  background-color: rgba(34, 197, 94, 0.15);
+}
+
+.recording-controls .listening-stop {
+  border-color: #22c55e;
+  background-color: rgba(34, 197, 94, 0.15);
+}
