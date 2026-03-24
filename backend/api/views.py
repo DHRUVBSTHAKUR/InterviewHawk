@@ -16,7 +16,6 @@ def generate_question(request):
         return Response({"error": "No PDF file provided."}, status=400)
 
     pdf_file = request.FILES["resume"]
-    # Get difficulty from the frontend (defaults to 'Easy' if not provided)
     difficulty = request.data.get("difficulty", "Easy")
     user = request.user 
 
@@ -33,7 +32,6 @@ def generate_question(request):
         try:
             client = OpenAI(api_key=api_key)
             
-            # Tailor the prompt based on difficulty
             difficulty_instruction = ""
             if difficulty == "Easy":
                 difficulty_instruction = "Generate a fundamental, high-level conceptual question. Keep it encouraging."
@@ -57,13 +55,10 @@ def generate_question(request):
         except Exception as e:
             print(f"OpenAI Error: {e}")
 
-    # We save the difficulty in the session for the grading step later
     session = InterviewSession.objects.create(
         user=user,
         resume_name=pdf_file.name,
         ai_question=question
-        # If you want to track difficulty in DB, add a field to your model, 
-        # otherwise we just pass it from frontend in Step 2.
     )
 
     return Response({
@@ -74,12 +69,12 @@ def generate_question(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def grade_answer(request):
-    """Step 2: Grade the answer with a supportive bias (especially on Easy)."""
+    """Step 2: Grade the answer with a supportive bias."""
     data = request.data
     session_id = data.get('session_id')
     user_answer = data.get('answer')
     question = data.get('question')
-    difficulty = data.get('difficulty', 'Easy') # Get difficulty back from frontend
+    difficulty = data.get('difficulty', 'Easy')
 
     if not session_id or not user_answer:
         return Response({"error": "Missing session_id or answer."}, status=400)
@@ -91,13 +86,11 @@ def grade_answer(request):
     if api_key:
         try:
             client = OpenAI(api_key=api_key)
-            
-            # The "Soft Grader" Prompt
             scoring_logic = """
             SCORING GUIDELINES:
             - If the user makes a genuine attempt, the baseline score is 6/10.
             - Be very encouraging and highlight what they did well first.
-            - For 'Easy' difficulty: Grade leniently. Focus on general understanding.
+            - For 'Easy' difficulty: Grade leniently. 
             - For 'Hard' difficulty: Grade more strictly on technical accuracy.
             """
 
@@ -116,7 +109,6 @@ def grade_answer(request):
             score_raw = evaluation.get('score', '0/10')
             feedback = evaluation.get('feedback', '')
             
-            # Extract just the number
             try:
                 score_val = int(str(score_raw).split('/')[0])
             except:
@@ -141,11 +133,13 @@ def grade_answer(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_interview_history(request):
-    """Step 3: Fetch history."""
-    interviews = InterviewSession.objects.filter(user=request.user).order_by('-created_at')
+    """Step 3: Fetch history for all team members."""
+    # Note: Use .all() instead of .filter(user=request.user) so everyone can see Tanya, Naresh, and Shreya's scores
+    interviews = InterviewSession.objects.all().order_by('-created_at')
     
     data = [{
         "id": item.id,
+        "username": item.user.username, # Added username
         "resume": item.resume_name,
         "question": item.ai_question,
         "score": f"{item.technical_score}/10",
