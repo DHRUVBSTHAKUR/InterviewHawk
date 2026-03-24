@@ -8,22 +8,17 @@ from pypdf import PdfReader
 from openai import OpenAI
 from .models import InterviewSession 
 
-FAKE_QUESTIONS = [
-    "Explain the difference between React State and Props.",
-    "How does the Virtual DOM work in React?",
-    "Explain the concept of 'closure' in JavaScript.",
-    "What are the differences between SQL and NoSQL databases?",
-]
-
 @api_view(['POST'])
-@permission_classes([IsAuthenticated]) # <-- SECURED
+@permission_classes([IsAuthenticated])
 def generate_question(request):
-    """Step 1: Accept PDF, extract text, generate question for the LOGGED IN user."""
+    """Step 1: Generate question based on resume and selected difficulty."""
     if "resume" not in request.FILES:
         return Response({"error": "No PDF file provided."}, status=400)
 
     pdf_file = request.FILES["resume"]
-    user = request.user # <-- REAL USER
+    # Get difficulty from the frontend (defaults to 'Easy' if not provided)
+    difficulty = request.data.get("difficulty", "Easy")
+    user = request.user 
 
     try:
         reader = PdfReader(pdf_file)
@@ -32,17 +27,27 @@ def generate_question(request):
         return Response({"error": f"PDF Error: {str(e)}"}, status=400)
 
     api_key = os.environ.get("OPENAI_API_KEY")
-    question = random.choice(FAKE_QUESTIONS) 
+    question = "Could you tell me about your most significant technical project?"
 
     if api_key:
         try:
             client = OpenAI(api_key=api_key)
+            
+            # Tailor the prompt based on difficulty
+            difficulty_instruction = ""
+            if difficulty == "Easy":
+                difficulty_instruction = "Generate a fundamental, high-level conceptual question. Keep it encouraging."
+            elif difficulty == "Medium":
+                difficulty_instruction = "Generate a standard technical interview question about implementation details."
+            else: # Hard
+                difficulty_instruction = "Generate a very tough, deep-dive architectural or edge-case technical question. Be rigorous."
+
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {
                         "role": "system", 
-                        "content": "You are InterviewHawk, a specialized AI Career Coach. Generate ONE tough, project-specific technical interview question based on the candidate's resume. Focus on the most complex project. Return ONLY the question string."
+                        "content": f"You are InterviewHawk. {difficulty_instruction} Focus on the user's resume projects. Return ONLY the question string."
                     },
                     {"role": "user", "content": text[:8000]},
                 ],
@@ -52,10 +57,13 @@ def generate_question(request):
         except Exception as e:
             print(f"OpenAI Error: {e}")
 
+    # We save the difficulty in the session for the grading step later
     session = InterviewSession.objects.create(
         user=user,
         resume_name=pdf_file.name,
         ai_question=question
+        # If you want to track difficulty in DB, add a field to your model, 
+        # otherwise we just pass it from frontend in Step 2.
     )
 
     return Response({
@@ -64,13 +72,14 @@ def generate_question(request):
     })
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated]) # <-- SECURED
+@permission_classes([IsAuthenticated])
 def grade_answer(request):
-    """Step 2: Grade the answer and save it to the user's session."""
+    """Step 2: Grade the answer with a supportive bias (especially on Easy)."""
     data = request.data
     session_id = data.get('session_id')
     user_answer = data.get('answer')
     question = data.get('question')
+    difficulty = data.get('difficulty', 'Easy') # Get difficulty back from frontend
 
     if not session_id or not user_answer:
         return Response({"error": "Missing session_id or answer."}, status=400)
@@ -82,33 +91,47 @@ def grade_answer(request):
     if api_key:
         try:
             client = OpenAI(api_key=api_key)
+            
+            # The "Soft Grader" Prompt
+            scoring_logic = """
+            SCORING GUIDELINES:
+            - If the user makes a genuine attempt, the baseline score is 6/10.
+            - Be very encouraging and highlight what they did well first.
+            - For 'Easy' difficulty: Grade leniently. Focus on general understanding.
+            - For 'Hard' difficulty: Grade more strictly on technical accuracy.
+            """
+
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 response_format={"type": "json_object"},
                 messages=[
                     {
                         "role": "system", 
-                        "content": "Evaluate the technical answer. Return JSON: {'score': 'X/10', 'feedback': '...'}."
+                        "content": f"You are a supportive Career Coach. {scoring_logic} Return JSON: {{'score': 'X/10', 'feedback': '...'}}."
                     },
-                    {"role": "user", "content": f"Q: {question}\nA: {user_answer}"},
+                    {"role": "user", "content": f"Difficulty: {difficulty}\nQuestion: {question}\nUser Answer: {user_answer}"},
                 ],
             )
             evaluation = json.loads(response.choices[0].message.content)
             score_raw = evaluation.get('score', '0/10')
             feedback = evaluation.get('feedback', '')
-            score_val = int(str(score_raw).split('/')[0])
+            
+            # Extract just the number
+            try:
+                score_val = int(str(score_raw).split('/')[0])
+            except:
+                score_val = 5
         except Exception as e:
             print(f"Grading Error: {e}")
 
     try:
-        # <-- REAL USER CHECK: Ensures they can't grade someone else's session
         session = InterviewSession.objects.get(id=session_id, user=request.user)
         session.user_answer = user_answer
         session.technical_score = score_val
         session.feedback = feedback
         session.save()
     except InterviewSession.DoesNotExist:
-        return Response({"error": "Session not found or unauthorized"}, status=404)
+        return Response({"error": "Session not found"}, status=404)
 
     return Response({
         "score": f"{score_val}/10", 
@@ -116,9 +139,9 @@ def grade_answer(request):
     })
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated]) # <-- SECURED
+@permission_classes([IsAuthenticated])
 def get_interview_history(request):
-    """Step 3: Fetch history exclusively for the logged-in user."""
+    """Step 3: Fetch history."""
     interviews = InterviewSession.objects.filter(user=request.user).order_by('-created_at')
     
     data = [{
