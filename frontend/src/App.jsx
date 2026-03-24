@@ -50,7 +50,7 @@ export default function App() {
     const token = localStorage.getItem('access_token');
 
     try {
-      const { data } = await axios.post('http://127.0.0.1:8000/api/generate-question/', formData, {
+      const { data } = await axios.post('https://interviewhawk-backend.onrender.com/api/generate-question/', formData, {
         headers: { 
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}` 

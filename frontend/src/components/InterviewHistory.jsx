@@ -10,7 +10,7 @@ export default function InterviewHistory() {
     const fetchHistory = async () => {
       const token = localStorage.getItem('access_token');
       try {
-        const { data } = await axios.get('http://127.0.0.1:8000/api/history/', {
+        const { data } = await axios.get('https://interviewhawk-backend.onrender.com/api/history/', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setHistory(data);
