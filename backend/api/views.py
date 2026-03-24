@@ -1,12 +1,14 @@
 import json
 import os
 import random
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from pypdf import PdfReader
 from openai import OpenAI
+from .models import InterviewSession 
 
-# Your fallback questions to simulate AI if the real API fails during the demo
+# Your safety net questions for demo stability
 FAKE_QUESTIONS = [
     "Explain the difference between React State and Props.",
     "How does the Virtual DOM work in React?",
@@ -16,121 +18,112 @@ FAKE_QUESTIONS = [
 ]
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def generate_question(request):
-    """Accept a PDF resume, extract text, and generate an interview question via AI."""
-    
-    # 1. Validate that a file was actually sent
+    """Step 1: Accept PDF, Generate Question, and Create Database Entry."""
     if "resume" not in request.FILES:
-        return Response({"error": "No PDF file provided. Use form field 'resume'."}, status=400)
+        return Response({"error": "No PDF file provided."}, status=400)
 
     pdf_file = request.FILES["resume"]
-    if not pdf_file.name.lower().endswith(".pdf"):
-        return Response({"error": "File must be a PDF."}, status=400)
+    user = request.user 
 
-    # 2. Extract text from the PDF
+    # 1. Extract text from PDF
     try:
         reader = PdfReader(pdf_file)
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text() or ""
-        text = text.strip()
+        text = "".join([page.extract_text() or "" for page in reader.pages]).strip()
     except Exception as e:
-        return Response({"error": f"Failed to extract text from PDF: {str(e)}"}, status=400)
+        return Response({"error": f"PDF Error: {str(e)}"}, status=400)
 
-    if not text:
-        return Response({"error": "No text could be extracted from the PDF."}, status=400)
-
-    # 3. Check for the OpenAI API Key
+    # 2. Generate Question using OpenAI or Fallback
     api_key = os.environ.get("OPENAI_API_KEY")
-    
-    # SAFETY NET: If no API key is set, use a fake question so your demo doesn't crash!
-    if not api_key:
-        print("WARNING: No OPENAI_API_KEY found. Using fallback question.")
-        return Response({"question": random.choice(FAKE_QUESTIONS)})
+    question = random.choice(FAKE_QUESTIONS) 
 
-    # 4. Generate the custom question using OpenAI
-    client = OpenAI(api_key=api_key)
+    if api_key:
+        try:
+            client = OpenAI(api_key=api_key)
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a technical interviewer. Generate ONE tough question based on this resume. Return ONLY the question."},
+                    {"role": "user", "content": text[:8000]},
+                ],
+                max_tokens=256,
+            )
+            question = response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"OpenAI Error: {e}")
 
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are an expert technical interviewer. Based on the candidate's resume, "
-                        "generate ONE relevant, professional interview question. "
-                        "The question should be specific to their experience, skills, or background. "
-                        "Return ONLY the question text, no preamble or numbering."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": text[:8000], # Limit text size to avoid breaking token limits
-                },
-            ],
-            max_tokens=256,
-        )
-        question = response.choices[0].message.content.strip()
-        return Response({"question": question})
-        
-    except Exception as e:
-        print(f"OpenAI Error: {str(e)}")
-        # FINAL SAFETY NET: If the API call fails (e.g., no internet), return a fake question
-        return Response({"question": random.choice(FAKE_QUESTIONS)})
+    # 3. SAVE TO DATABASE (Review 3 Feature)
+    session = InterviewSession.objects.create(
+        user=user,
+        resume_name=pdf_file.name,
+        ai_question=question
+    )
 
+    return Response({
+        "session_id": session.id, 
+        "question": question
+    })
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def grade_answer(request):
-    """Receive the question and the candidate's answer, and grade it using AI."""
-    
-    # 1. Get the data sent from React
+    """Step 2: Grade the answer and UPDATE the existing database record."""
     data = request.data
+    session_id = data.get('session_id')
+    user_answer = data.get('answer')
     question = data.get('question')
-    answer = data.get('answer')
 
-    if not question or not answer:
-        return Response({"error": "Missing question or answer."}, status=400)
+    if not session_id or not user_answer:
+        return Response({"error": "Missing session_id or answer."}, status=400)
 
-    # 2. Check for the API Key
+    # AI Grading Logic
     api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        print("WARNING: No OPENAI_API_KEY found. Using fallback grading.")
-        return Response({
-            "score": "7/10", 
-            "feedback": "Fallback Mode: Good attempt, but try to use more specific technical terms next time."
-        })
+    score = "N/A"
+    feedback = "Manual review required."
 
-    client = OpenAI(api_key=api_key)
+    if api_key:
+        try:
+            client = OpenAI(api_key=api_key)
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": "Evaluate the answer. Return JSON: {'score': 'X/10', 'feedback': '...'} "},
+                    {"role": "user", "content": f"Q: {question}\nA: {user_answer}"},
+                ],
+            )
+            evaluation = json.loads(response.choices[0].message.content)
+            score = evaluation.get('score', 'N/A')
+            feedback = evaluation.get('feedback', '')
+        except Exception as e:
+            print(f"Grading Error: {e}")
 
-    # 3. Ask OpenAI to grade it and force it to return a clean JSON format
+    # UPDATE DATABASE: Link the score to the previous session
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            response_format={"type": "json_object"}, # Forces AI to return clean data, not a conversational paragraph
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a strict technical interviewer. Evaluate the candidate's answer to the question. "
-                        "Return a JSON object strictly with two keys: 'score' (a string like '8/10') and 'feedback' (1-2 sentences of actionable, direct advice)."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": f"Question: {question}\nCandidate Answer: {answer}",
-                },
-            ],
-            max_tokens=200,
-        )
-        
-        # Parse the AI's JSON response and send it to the frontend
-        evaluation = json.loads(response.choices[0].message.content)
-        return Response(evaluation)
-        
-    except Exception as e:
-        print(f"OpenAI Error during grading: {str(e)}")
-        return Response({
-            "score": "N/A", 
-            "feedback": "An error occurred while grading. Please try answering again."
-        })
+        session = InterviewSession.objects.get(id=session_id, user=request.user)
+        session.user_answer = user_answer
+        session.technical_score = int(score.split('/')[0]) if '/' in score else 0
+        session.feedback = feedback
+        session.save()
+    except InterviewSession.DoesNotExist:
+        return Response({"error": "Session not found"}, status=404)
+
+    return Response({"score": score, "feedback": feedback})
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_interview_history(request):
+    """Step 3: Let the Mobile App fetch all past results."""
+    interviews = InterviewSession.objects.filter(user=request.user).order_by('-created_at')
+    
+    data = [{
+        "id": item.id,
+        "resume": item.resume_name,
+        "question": item.ai_question,
+        "score": f"{item.technical_score}/10",
+        "feedback": item.feedback,
+        "date": item.created_at.strftime("%b %d, %Y")
+    } for item in interviews]
+    
+    return Response(data)

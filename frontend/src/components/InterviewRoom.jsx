@@ -139,7 +139,8 @@ export default function InterviewRoom({ question }) {
     setIsGrading(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/grade-answer/', {
+      // 👇 THE FIX: Pointing to the LIVE Render Backend
+      const response = await fetch('https://interviewhawk-backend.onrender.com/api/grade-answer/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -191,7 +192,7 @@ export default function InterviewRoom({ question }) {
           
           <button
             type="button"
-            onClick={stopAndGrade} // <-- Changed this to our new function!
+            onClick={stopAndGrade}
             disabled={!isListening}
             className={isListening ? 'listening-stop' : undefined}
           >
