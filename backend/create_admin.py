@@ -1,13 +1,12 @@
 import os
 import django
 
-# Set the settings module (matches your folder name)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'interview_hawk.settings')
 django.setup()
 
 from django.contrib.auth.models import User
 
-# The 4 users for your team
+# Exact credentials from your request
 users_to_create = [
     ('dhruv', 'dhruv@123'),
     ('taniya', 'Mrnoob@sleep'),
@@ -15,10 +14,18 @@ users_to_create = [
     ('shreya', 'shreya@123')
 ]
 
+print("--- Starting User Sync ---")
+
 for username, password in users_to_create:
-    if not User.objects.filter(username=username).exists():
-        # Using create_superuser for everyone so they all have full access
-        User.objects.create_superuser(username=username, password=password, email=f"{username}@example.com")
-        print(f"✅ User {username} created successfully!")
+    user, created = User.objects.get_or_create(username=username)
+    user.set_password(password) # This ensures the password is saved correctly
+    user.is_superuser = True
+    user.is_staff = True
+    user.save()
+    
+    if created:
+        print(f"✅ Created NEW user: {username}")
     else:
-        print(f"ℹ️ User {username} already exists.")
+        print(f"🔄 Updated EXISTING user: {username}")
+
+print("--- User Sync Complete ---")
