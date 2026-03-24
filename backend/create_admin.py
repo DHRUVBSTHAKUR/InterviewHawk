@@ -9,7 +9,7 @@ from django.contrib.auth.models import User
 # Exact credentials from your request
 users_to_create = [
     ('dhruv', 'dhruv@123'),
-    ('taniya', 'Mrnoob@sleep'),
+    ('taniya', 'sindhi@imposter'),
     ('naresh', 'naresh@123'),
     ('shreya', 'shreya@123')
 ]
