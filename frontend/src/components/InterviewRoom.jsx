@@ -3,21 +3,20 @@ import FaceMonitor from './FaceMonitor';
 
 const PLACEHOLDER = 'Upload a resume to get your first question.';
 
-export default function InterviewRoom({ question }) {
+export default function InterviewRoom({ question, sessionId }) {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   
-  // NEW STATES FOR GRADING
+  // States for grading
   const [isGrading, setIsGrading] = useState(false);
   const [evaluation, setEvaluation] = useState(null);
 
-  // Keeps a stable reference to the active SpeechRecognition instance.
   const recognitionRef = useRef(null);
   const isListeningRef = useRef(false);
   const finalTranscriptRef = useRef('');
 
   useEffect(() => {
-    // If a new question arrives, stop listening and clear the old grade
+    // Reset state when a new question or session arrives
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch (e) {}
       recognitionRef.current = null;
@@ -26,7 +25,7 @@ export default function InterviewRoom({ question }) {
     setIsListening(false);
     finalTranscriptRef.current = '';
     setTranscript('');
-    setEvaluation(null); // Clear old report card
+    setEvaluation(null);
 
     if (!question || question === PLACEHOLDER) return;
 
@@ -36,7 +35,9 @@ export default function InterviewRoom({ question }) {
       const utterance = new SpeechSynthesisUtterance(question);
       utterance.rate = 0.9;
       const voices = window.speechSynthesis.getVoices();
-      const enVoice = voices.find((v) => v.lang.startsWith('en-US') && v.default) || voices.find((v) => v.lang.startsWith('en-US')) || voices.find((v) => v.lang.startsWith('en'));
+      const enVoice = voices.find((v) => v.lang.startsWith('en-US') && v.default) || 
+                      voices.find((v) => v.lang.startsWith('en-US')) || 
+                      voices.find((v) => v.lang.startsWith('en'));
       if (enVoice) utterance.voice = enVoice;
       window.speechSynthesis.speak(utterance);
     };
@@ -51,18 +52,13 @@ export default function InterviewRoom({ question }) {
     }
 
     return () => window.speechSynthesis.cancel();
-  }, [question]);
+  }, [question, sessionId]);
 
   const startSpeechToText = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      console.error('SpeechRecognition is not supported in this browser.');
+      alert('Speech Recognition is not supported in this browser. Try Chrome.');
       return;
-    }
-
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch (e) {}
-      recognitionRef.current = null;
     }
 
     const recognition = new SpeechRecognition();
@@ -75,154 +71,139 @@ export default function InterviewRoom({ question }) {
     setIsListening(true);
     finalTranscriptRef.current = '';
     setTranscript('');
-    setEvaluation(null); // Clear previous grade when starting a new answer
 
     recognition.onresult = (event) => {
-      if (!isListeningRef.current) return;
       let interim = '';
-
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
-        const text = result?.[0]?.transcript || '';
-
         if (result.isFinal) {
-          const trimmed = text.trim();
-          if (!trimmed) continue;
-          const current = finalTranscriptRef.current;
-          const spacer = current && !current.endsWith(' ') ? ' ' : '';
-          finalTranscriptRef.current = current + spacer + trimmed;
+          finalTranscriptRef.current += result[0].transcript + ' ';
         } else {
-          interim = text.trim();
+          interim += result[0].transcript;
         }
       }
-
-      const composed = interim ? `${finalTranscriptRef.current}${finalTranscriptRef.current ? ' ' : ''}${interim}` : finalTranscriptRef.current;
-      setTranscript(composed);
+      setTranscript(finalTranscriptRef.current + interim);
     };
 
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event);
-      isListeningRef.current = false;
+    recognition.onerror = (err) => {
+      console.error('Speech Error:', err);
       setIsListening(false);
     };
 
     recognition.onend = () => {
-      isListeningRef.current = false;
-      setIsListening(false);
-      recognitionRef.current = null;
+        setIsListening(false);
     };
 
-    try { recognition.start(); } catch (err) {
-      console.error('Failed to start SpeechRecognition:', err);
-      isListeningRef.current = false;
-      setIsListening(false);
-      recognitionRef.current = null;
-    }
+    recognition.start();
   };
 
-  // NEW FUNCTION: Stop recording and send data to Django Brain
   const stopAndGrade = async () => {
     if (recognitionRef.current) {
-      isListeningRef.current = false;
-      setIsListening(false);
-      try { recognitionRef.current.stop(); } catch (err) {}
-      recognitionRef.current = null;
+      recognitionRef.current.stop();
     }
 
-    // Don't grade if they didn't say anything
-    const finalAnswer = transcript || finalTranscriptRef.current;
-    if (!finalAnswer.trim()) {
-      alert("Please say something before stopping the answer!");
+    const finalAnswer = transcript.trim();
+    if (!finalAnswer) {
+      alert("Please provide an answer first!");
       return;
     }
 
     setIsGrading(true);
+    
+    // Get token for authenticated request
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
 
     try {
-      // 👇 THE FIX: Pointing to the LIVE Render Backend
-      const response = await fetch('https://interviewhawk-backend.onrender.com/api/grade-answer/', {
+      const response = await fetch('http://127.0.0.1:8000/api/grade-answer/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
+          session_id: sessionId, // CRITICAL: Links to the DB record
           question: question,
           answer: finalAnswer
         })
       });
 
-      if (!response.ok) throw new Error("Failed to fetch grade");
+      if (!response.ok) throw new Error("Grading failed");
       
       const data = await response.json();
-      setEvaluation(data); // Save the score and feedback to show on screen
+      setEvaluation(data); 
       
     } catch (error) {
       console.error("Grading Error:", error);
-      setEvaluation({ score: "Error", feedback: "Could not connect to the AI Grader." });
+      setEvaluation({ score: "N/A", feedback: "Connection to AI Grader lost. Please check your internet." });
     } finally {
       setIsGrading(false);
     }
   };
 
   return (
-    <div className="interview-room">
-      <div className="question-panel">
-        <h2>Interview Question</h2>
-        <p className="question-text">{question || PLACEHOLDER}</p>
+    <div className="interview-room" style={{ color: '#fff', maxWidth: '900px', margin: '0 auto' }}>
+      <div className="question-panel" style={{ background: '#111', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #bd00ff', marginBottom: '20px' }}>
+        <h2 style={{ color: '#bd00ff', marginTop: 0 }}>🦅 InterviewHawk Question</h2>
+        <p className="question-text" style={{ fontSize: '1.2rem', lineHeight: '1.6' }}>{question || PLACEHOLDER}</p>
       </div>
 
-      <div className="camera-panel">
-        <h3>Your Camera</h3>
-        {question && <FaceMonitor />}
+      <div className="camera-panel" style={{ position: 'relative' }}>
+        <div style={{ borderRadius: '15px', overflow: 'hidden', border: '2px solid #333' }}>
+            {question && question !== PLACEHOLDER && <FaceMonitor />}
+        </div>
 
-        <div className="transcript-box-wrap">
-          <div className="transcript-label">Transcript</div>
-          <div className="transcript-box" aria-live="polite">
-            {transcript || <span className="transcript-placeholder">Your words will appear here...</span>}
+        <div className="transcript-box-wrap" style={{ marginTop: '20px' }}>
+          <div className="transcript-label" style={{ color: '#00ffff', fontWeight: 'bold', marginBottom: '5px' }}>Live Transcript</div>
+          <div className="transcript-box" style={{ background: '#000', padding: '15px', borderRadius: '8px', minHeight: '80px', border: '1px solid #222' }}>
+            {transcript || <span style={{ opacity: 0.4 }}>Your response will appear here...</span>}
           </div>
         </div>
 
-        <div className="recording-controls">
+        <div className="recording-controls" style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
           <button
-            type="button"
             onClick={startSpeechToText}
-            disabled={isListening || isGrading}
-            className={isListening ? 'listening-start' : undefined}
+            disabled={isListening || isGrading || !question || question === PLACEHOLDER}
+            style={{
+              flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold',
+              background: isListening ? '#444' : '#00ffcc', color: '#000', cursor: 'pointer'
+            }}
           >
-            {isListening ? '🎙️ Listening...' : '▶️ Start Answer'}
+            {isListening ? '🎙️ Listening...' : '▶️ Start Speaking'}
           </button>
           
           <button
-            type="button"
             onClick={stopAndGrade}
             disabled={!isListening}
-            className={isListening ? 'listening-stop' : undefined}
+            style={{
+              flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold',
+              background: '#ff3366', color: '#fff', cursor: 'pointer'
+            }}
           >
-            ⏹️ Stop & Grade
+            ⏹️ Finish & Grade
           </button>
         </div>
 
-        {/* --- NEW: THE REPORT CARD --- */}
         {isGrading && (
-          <div style={{ marginTop: '20px', padding: '15px', background: '#333', borderRadius: '8px', textAlign: 'center', color: '#00ffff' }}>
-            ⚙️ AI is analyzing your technical accuracy...
+          <div style={{ marginTop: '20px', padding: '15px', background: '#222', borderRadius: '8px', textAlign: 'center', border: '1px solid #00ffff' }}>
+            <span style={{ animation: 'pulse 1.5s infinite' }}>⚙️ Analyzing your logic...</span>
           </div>
         )}
 
         {evaluation && (
           <div style={{ 
-            marginTop: '20px', padding: '20px', borderRadius: '10px', 
-            background: '#111', border: '1px solid #bd00ff',
-            boxShadow: '0 0 15px rgba(189, 0, 255, 0.2)'
+            marginTop: '25px', padding: '20px', borderRadius: '12px', 
+            background: 'linear-gradient(145deg, #1a1a1a, #000)', border: '1px solid #bd00ff'
           }}>
-            <h3 style={{ margin: '0 0 15px 0', color: '#bd00ff' }}>📊 AI Report Card</h3>
-            <p style={{ fontSize: '18px', margin: '10px 0' }}>
-              <strong>Technical Score:</strong> <span style={{ color: '#00ffff', fontWeight: 'bold' }}>{evaluation.score}</span>
-            </p>
-            <p style={{ fontSize: '16px', lineHeight: '1.5', color: '#ccc', margin: 0 }}>
-              <strong>Feedback:</strong> {evaluation.feedback}
+            <h3 style={{ margin: '0 0 10px 0', color: '#bd00ff' }}>📊 AI Feedback Report</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                <span style={{ fontSize: '24px' }}>🏆</span>
+                <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#00ffff' }}>{evaluation.score}</span>
+            </div>
+            <p style={{ color: '#eee', lineHeight: '1.6', fontSize: '15px' }}>
+              <strong>Critique:</strong> {evaluation.feedback}
             </p>
           </div>
         )}
-        
       </div>
     </div>
   );

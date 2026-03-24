@@ -1,7 +1,8 @@
 from django.urls import path
-from . import views
+from .views import generate_question, grade_answer, get_interview_history
 
 urlpatterns = [
-    path("generate-question/", views.generate_question, name="generate_question"),
-    path("history/", views.get_interview_history, name="get_interview_history"), # <-- New!
+    path('generate-question/', generate_question, name='generate-question'),
+    path('grade-answer/', grade_answer, name='grade-answer'),
+    path('history/', get_interview_history, name='history'),
 ]
