@@ -161,6 +161,6 @@ npx expo start
 
 As InterviewHawk evolves, the following features are planned for the next major release:
 
--[] **Real-Time Voice Streaming**: Transitioning from asynchronous audio to full-duplex WebRTC via LiveKit, allowing candidates to physically interrupt the AI for a true phone-call simulation.
--[] **Sentiment & Behavioral Analysis**: Integrating computer vision to evaluate eye contact, speaking pace, and confidence.
--[] **Interactive Sandboxes**: Embedding live code-execution environments within the React UI for algorithmic pair-programming.
+- [ ] **Real-Time Voice Streaming**: Transitioning from asynchronous audio to full-duplex WebRTC via LiveKit, allowing candidates to physically interrupt the AI for a true phone-call simulation.
+- [ ] **Sentiment & Behavioral Analysis**: Integrating computer vision to evaluate eye contact, speaking pace, and confidence.
+- [ ] **Interactive Sandboxes**: Embedding live code-execution environments within the React UI for algorithmic pair-programming.
