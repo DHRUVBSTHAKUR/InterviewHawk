@@ -22,14 +22,12 @@ By leveraging Generative AI and Document Parsing, InterviewHawk acts as a person
 ## 📸 Platform Previews
 
 <div align="center">
-  <img src="<img width="1465" height="803" alt="Screenshot 2026-04-02 at 1 19 20 AM" src="https://github.com/user-attachments/assets/2ae6f57a-37d7-41dd-9397-9759355b982c" />
-"width="48%" alt="Web Dashboard" />
-  <img src="<img width="312" height="570" alt="Screenshot 2026-04-02 at 1 22 28 AM" src="https://github.com/user-attachments/assets/ff515c39-04e6-4409-907e-623b32251094" />
-" width="25%" alt="Mobile Dashboard" />
+  <img src="https://github.com/user-attachments/assets/2ae6f57a-37d7-41dd-9397-9759355b982c" width="60%" alt="Web Dashboard" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://github.com/user-attachments/assets/ff515c39-04e6-4409-907e-623b32251094" width="25%" alt="Mobile Dashboard" />
 </div>
 
 ---
-
 ## 🛠️ Technical Stack
 
 **Frontend (Web)**
