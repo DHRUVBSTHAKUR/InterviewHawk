@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 
-// ⚠️ CHANGE THIS TO YOUR MAC'S IP ADDRESS! 
+// Live Render Backend URL
 const BACKEND_URL = 'https://interviewhawk-backend.onrender.com/api';
 
 export default function HomeScreen() {
@@ -49,13 +49,17 @@ export default function HomeScreen() {
   }, []);
 
   const handleLogin = async () => {
+    if (!username || !password) {
+      Alert.alert('Error', 'Please enter both username and password.');
+      return;
+    }
     setLoading(true);
     try {
       const response = await axios.post(`${BACKEND_URL}/token/`, { username, password });
       const token = response.data.access;
       await SecureStore.setItemAsync('access_token', token);
       setIsAuthenticated(true);
-      fetchHistory(token); // Grab stats immediately after login
+      fetchHistory(token); 
     } catch (error) {
       Alert.alert('Login Failed', 'Check your credentials or network connection.');
       console.log(error);
@@ -68,21 +72,38 @@ export default function HomeScreen() {
     await SecureStore.deleteItemAsync('access_token');
     setIsAuthenticated(false);
     setHistory([]);
+    setUsername('');
+    setPassword('');
   };
 
   // --- UI: HISTORY CARD COMPONENT ---
   const renderHistoryItem = ({ item }: { item: any }) => {
-    const scoreNum = parseInt(item.score);
+    // Safety check for score parsing
+    const scoreNum = item.score ? parseInt(item.score.split('/')[0]) : 0;
     const scoreColor = scoreNum >= 7 ? '#00ffcc' : scoreNum >= 5 ? '#ffcc00' : '#ff3366';
 
     return (
       <View style={[styles.card, { borderLeftColor: scoreColor }]}>
         <View style={styles.cardHeader}>
-          <Text style={styles.dateText}>📅 {item.date}</Text>
-          <Text style={[styles.scoreText, { color: scoreColor }]}>Score: {item.score}</Text>
+          <View style={styles.userBadge}>
+            <Text style={styles.userText}>👤 {item.username?.toUpperCase() || 'USER'}</Text>
+          </View>
+          <Text style={styles.dateText}>📅 {item.date || 'Recent'}</Text>
         </View>
-        <Text style={styles.questionText}><Text style={{ color: '#bd00ff' }}>Q:</Text> {item.question}</Text>
-        <Text style={styles.feedbackText}>Hawk Feedback: {item.feedback}</Text>
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <Text style={[styles.scoreText, { color: scoreColor }]}>Score: {item.score || '0/10'}</Text>
+        </View>
+
+        <Text style={styles.questionText}>
+          <Text style={{ color: '#bd00ff', fontWeight: 'bold' }}>Q: </Text> 
+          {item.question || 'No question recorded.'}
+        </Text>
+        
+        <View style={styles.feedbackContainer}>
+          <Text style={styles.feedbackLabel}>HAWK FEEDBACK</Text>
+          <Text style={styles.feedbackText}>{item.feedback || 'Analyzing performance...'}</Text>
+        </View>
       </View>
     );
   };
@@ -91,19 +112,28 @@ export default function HomeScreen() {
   if (!isAuthenticated) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>🦅 InterviewHawk</Text>
-        <Text style={styles.subtitle}>Companion Dashboard</Text>
-        <TextInput 
-          style={styles.input} placeholder="Username" placeholderTextColor="#888"
-          value={username} onChangeText={setUsername} autoCapitalize="none"
-        />
-        <TextInput 
-          style={styles.input} placeholder="Password" placeholderTextColor="#888"
-          value={password} onChangeText={setPassword} secureTextEntry
-        />
-        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login to Dashboard</Text>}
-        </TouchableOpacity>
+        <View style={{ marginTop: 60 }}>
+          <Text style={styles.title}>🦅 InterviewHawk</Text>
+          <Text style={styles.subtitle}>Companion Dashboard</Text>
+        </View>
+
+        <View style={{ marginTop: 20 }}>
+          <TextInput 
+            style={styles.input} placeholder="Username" placeholderTextColor="#555"
+            value={username} onChangeText={setUsername} autoCapitalize="none"
+          />
+          <TextInput 
+            style={styles.input} placeholder="Password" placeholderTextColor="#555"
+            value={password} onChangeText={setPassword} secureTextEntry
+          />
+          <TouchableOpacity 
+            style={[styles.button, { opacity: loading ? 0.7 : 1 }]} 
+            onPress={handleLogin} 
+            disabled={loading}
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login to Dashboard</Text>}
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -112,7 +142,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🦅 Your Stats</Text>
+        <Text style={styles.headerTitle}>🦅 Team Stats</Text>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
@@ -121,12 +151,12 @@ export default function HomeScreen() {
       {history.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>No interview history found.</Text>
-          <Text style={styles.emptySubtext}>Take an interview on your laptop to see your stats here!</Text>
+          <Text style={styles.emptySubtext}>Take an interview on the web app to see stats here!</Text>
         </View>
       ) : (
         <FlatList
           data={history}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item, index) => item.id?.toString() || index.toString()}
           renderItem={renderHistoryItem}
           contentContainerStyle={{ paddingBottom: 50 }}
           refreshControl={
@@ -139,31 +169,35 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000', paddingHorizontal: 20, paddingTop: 60 },
+  container: { flex: 1, backgroundColor: '#000', paddingHorizontal: 20, paddingTop: 40 },
   
   // Login Styles
-  title: { fontSize: 32, fontWeight: 'bold', color: '#bd00ff', textAlign: 'center' },
-  subtitle: { fontSize: 16, color: '#00ffff', textAlign: 'center', marginBottom: 40, letterSpacing: 1 },
-  input: { backgroundColor: '#111', color: '#fff', padding: 15, borderRadius: 10, marginBottom: 15, borderWidth: 1, borderColor: '#333' },
-  button: { backgroundColor: '#bd00ff', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10 },
+  title: { fontSize: 36, fontWeight: 'bold', color: '#bd00ff', textAlign: 'center', letterSpacing: -1 },
+  subtitle: { fontSize: 14, color: '#00ffff', textAlign: 'center', marginBottom: 40, letterSpacing: 2, fontWeight: 'bold' },
+  input: { backgroundColor: '#0a0a0a', color: '#fff', padding: 18, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: '#222', fontSize: 16 },
+  button: { backgroundColor: '#bd00ff', padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 10, shadowColor: '#bd00ff', shadowOpacity: 0.3, shadowRadius: 10 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   
   // Dashboard Styles
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#333' },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
-  logoutBtn: { padding: 8, borderWidth: 1, borderColor: '#ff3366', borderRadius: 8 },
-  logoutText: { color: '#ff3366', fontWeight: 'bold' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#222' },
+  headerTitle: { fontSize: 26, fontWeight: 'bold', color: '#fff' },
+  logoutBtn: { paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1, borderColor: '#ff3366', borderRadius: 8 },
+  logoutText: { color: '#ff3366', fontWeight: 'bold', fontSize: 12 },
   
   // Card Styles
-  card: { backgroundColor: '#111', padding: 18, borderRadius: 12, marginBottom: 15, borderLeftWidth: 5 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  dateText: { color: '#888', fontSize: 14 },
-  scoreText: { fontWeight: 'bold', fontSize: 16 },
-  questionText: { color: '#fff', fontSize: 16, lineHeight: 24, marginBottom: 10, fontWeight: '500' },
-  feedbackText: { color: '#aaa', fontSize: 14, fontStyle: 'italic', lineHeight: 20 },
+  card: { backgroundColor: '#111', padding: 18, borderRadius: 16, marginBottom: 15, borderLeftWidth: 6 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  userBadge: { background: '#bd00ff', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, backgroundColor: '#bd00ff' },
+  userText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+  dateText: { color: '#555', fontSize: 12, fontWeight: 'bold' },
+  scoreText: { fontWeight: '900', fontSize: 20 },
+  questionText: { color: '#eee', fontSize: 15, lineHeight: 22, marginBottom: 15 },
+  feedbackContainer: { backgroundColor: '#000', padding: 12, borderRadius: 8, borderSize: 1, borderColor: '#222' },
+  feedbackLabel: { color: '#bd00ff', fontSize: 10, fontWeight: 'bold', marginBottom: 4 },
+  feedbackText: { color: '#bbb', fontSize: 13, lineHeight: 18 },
 
   // Empty State
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
-  emptySubtext: { color: '#888', textAlign: 'center', paddingHorizontal: 20 },
+  emptySubtext: { color: '#555', textAlign: 'center', paddingHorizontal: 40, fontSize: 14 },
 });
