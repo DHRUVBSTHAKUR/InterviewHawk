@@ -22,9 +22,24 @@ By leveraging Generative AI and Document Parsing, InterviewHawk acts as a person
 ## 📸 Platform Previews
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/2ae6f57a-37d7-41dd-9397-9759355b982c" width="60%" alt="Web Dashboard" />
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="https://github.com/user-attachments/assets/ff515c39-04e6-4409-907e-623b32251094" width="25%" alt="Mobile Dashboard" />
+  <table>
+    <thead>
+      <tr>
+        <th align="center">🌐 Web Dashboard</th>
+        <th align="center">📱 Mobile Companion App</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td align="center">
+          <img src="https://github.com/user-attachments/assets/2ae6f57a-37d7-41dd-9397-9759355b982c" width="600" alt="Web Dashboard" />
+        </td>
+        <td align="center">
+          <img src="https://github.com/user-attachments/assets/ff515c39-04e6-4409-907e-623b32251094" width="250" alt="Mobile Dashboard" />
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </div>
 
 ---
@@ -113,10 +128,9 @@ If you'd like to run the InterviewHawk ecosystem locally, follow these steps:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/interviewhawk.git
+git clone https://github.com/DHRUVBSTHAKUR/interviewhawk.git
 cd interviewhawk
 ```
-## 💻 Local Setup & Installation
 
 ### 2. Backend Setup (Django)
 ```bash
@@ -147,6 +161,6 @@ npx expo start
 
 As InterviewHawk evolves, the following features are planned for the next major release:
 
-- **Real-Time Voice Streaming**: Transitioning from asynchronous audio to full-duplex WebRTC via LiveKit, allowing candidates to physically interrupt the AI for a true phone-call simulation.
-- **Sentiment & Behavioral Analysis**: Integrating computer vision to evaluate eye contact, speaking pace, and confidence.
-- **Interactive Sandboxes**: Embedding live code-execution environments within the React UI for algorithmic pair-programming.
+-[] **Real-Time Voice Streaming**: Transitioning from asynchronous audio to full-duplex WebRTC via LiveKit, allowing candidates to physically interrupt the AI for a true phone-call simulation.
+-[] **Sentiment & Behavioral Analysis**: Integrating computer vision to evaluate eye contact, speaking pace, and confidence.
+-[] **Interactive Sandboxes**: Embedding live code-execution environments within the React UI for algorithmic pair-programming.
