@@ -8,7 +8,7 @@
 [![Django](https://img.shields.io/badge/Django-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com/)
 
-[**Live Web Demo**](https://your-vercel-link.com) | [**Demo Video**](https://youtube-or-loom-link.com)
+[**Live Web Demo**](https://interview-hawk.vercel.app/) | [**Demo Video**](https://youtube.com)
 
 </div>
 
@@ -22,8 +22,10 @@ By leveraging Generative AI and Document Parsing, InterviewHawk acts as a person
 ## 📸 Platform Previews
 
 <div align="center">
-  <img src="link-to-your-web-dashboard-screenshot.png" width="48%" alt="Web Dashboard" />
-  <img src="link-to-your-mobile-app-screenshot.png" width="25%" alt="Mobile Dashboard" />
+  <img src="<img width="1465" height="803" alt="Screenshot 2026-04-02 at 1 19 20 AM" src="https://github.com/user-attachments/assets/2ae6f57a-37d7-41dd-9397-9759355b982c" />
+"width="48%" alt="Web Dashboard" />
+  <img src="<img width="312" height="570" alt="Screenshot 2026-04-02 at 1 22 28 AM" src="https://github.com/user-attachments/assets/ff515c39-04e6-4409-907e-623b32251094" />
+" width="25%" alt="Mobile Dashboard" />
 </div>
 
 ---
