@@ -87,6 +87,9 @@ graph TD
     API -->|Extracts Resume| PDF
     API <-->|Reads/Writes| DB
     API <-->|Prompt Engineering| OAI
+```
+
+
 ## ✨ Core Engineering Features
 
 ### Context-Aware Prompt Engineering
@@ -112,6 +115,7 @@ If you'd like to run the InterviewHawk ecosystem locally, follow these steps:
 ```bash
 git clone https://github.com/yourusername/interviewhawk.git
 cd interviewhawk
+```
 ## 💻 Local Setup & Installation
 
 ### 2. Backend Setup (Django)
@@ -124,18 +128,21 @@ pip install -r requirements.txt
 python manage.py migrate
 python create_admin.py # Seeds the DB with test users
 python manage.py runserver
+```
 
 ### 3. Web Frontend Setup (React)
 ```bash
 cd frontend
 npm install
 npm start
+```
 
 ### 4. Mobile App Setup (React Native / Expo)
 ```bash
 cd interviewhawk-mobile
 npm install
 npx expo start
+```
 ## 🗺️ Future Roadmap
 
 As InterviewHawk evolves, the following features are planned for the next major release:
