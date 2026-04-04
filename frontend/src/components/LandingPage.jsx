@@ -18,7 +18,12 @@ export default function LandingPage({ onStart }) {
           </p>
           <div className="hero-btns">
             <button className="primary-btn" onClick={onStart}>Start Mock Interview</button>
-            <button className="secondary-btn">Watch Demo</button>
+            <button 
+             className="secondary-btn" 
+             onClick={() => window.open('https://www.youtube.com/watch?v=gXnmywZ13-c', '_blank', 'noopener,noreferrer')}
+            >
+             Watch Demo
+            </button>
           </div>
         </div>
         
