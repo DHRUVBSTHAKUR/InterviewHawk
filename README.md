@@ -164,3 +164,17 @@ As InterviewHawk evolves, the following features are planned for the next major 
 - [ ] **Real-Time Voice Streaming**: Transitioning from asynchronous audio to full-duplex WebRTC via LiveKit, allowing candidates to physically interrupt the AI for a true phone-call simulation.
 - [ ] **Sentiment & Behavioral Analysis**: Integrating computer vision to evaluate eye contact, speaking pace, and confidence.
 - [ ] **Interactive Sandboxes**: Embedding live code-execution environments within the React UI for algorithmic pair-programming.
+## 👨‍💻 Team & Roles
+
+* **Dhruv B.S. Thakur** - *Lead Developer & Technical Mentor*
+  * Architected and developed the core codebase and primary features.
+  * Mentored a team of 3 contributors, guiding them through Git workflows, code reviews, and collaborative development.
+
+* **Shreya** - *Contributor (Frontend & UI)*
+  * Designed and implemented user interface components, ensuring a clean, responsive, and engaging visual experience.
+
+* **Taniya** - *Contributor (Backend & Grid Architecture)*
+  * Structured the core grid layouts and assisted in integrating backend services to ensure smooth data flow.
+
+* **Naresh** - *Contributor (Mobile Integration)*
+  * Worked on adapting the project features for mobile environments, focusing on cross-platform compatibility and responsiveness.
