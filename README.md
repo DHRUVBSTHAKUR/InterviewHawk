@@ -8,7 +8,7 @@
 [![Django](https://img.shields.io/badge/Django-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com/)
 
-[**Live Web Demo**](https://interview-hawk.vercel.app/) | [**Demo Video**](https://youtube.com)
+[**Live Web Demo**](https://interview-hawk.vercel.app/) | [**Demo Video**](https://www.youtube.com/watch?v=gXnmywZ13-c)
 
 </div>
 
