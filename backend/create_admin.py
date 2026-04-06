@@ -12,7 +12,7 @@ users_to_create = [
     ('taniya', 'sindhi@imposter'),
     ('naresh', 'naresh@123'),
     ('shreya', 'shreya@123'),
-    ('ansh',ansh@123)
+    ('ansh','ansh@123')
 ]
 
 print("--- Starting User Sync ---")
